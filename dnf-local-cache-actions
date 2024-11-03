@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# shellcheck source=/dev/null
+source /etc/os-release
+
+action="${1}"
+repository="${2}"
+arch="${3}"
+location="${4}"
+
+log() {
+    echo "$@" >> /tmp/dnf-plugin-local.log
+}
+
+log "Invoked with options: $*"
+
+local_dir=/mnt/yum-mirror/local/"${ID}"/"${VERSION_ID}"/"${arch}"
+
+case "${action}" in
+    I|U|D|R)
+	    path_array=(/var/cache/libdnf5/"${repository}"-*/packages/"$(basename "${location}")")
+        if [[ ${#path_array[@]} -eq 0 ]] ; then
+            log "Error: $(basename "${location}") not found in DNF cache"
+        elif [[ ${#path_array[@]} -ne 1 ]] ; then
+            log "Error: $(basename "${location}") found in multiple paths: ${path_array[*]}"
+        else
+            path="${path_array[0]}"
+	        log "Searching for ${location} as ${path} due to ${action}"
+	        if ! mkdir -p "${local_dir}" ; then
+	            log "Error creating directory ${local_dir}"
+	        else
+	            if ! cp "${path}" "${local_dir}" ; then
+		            log "Copy failed."
+	            else
+		            log "Copy succeeded."
+		            touch /run/dnf-plugin-local."${arch}"
+	            fi
+	        fi
+        fi
+	    ;;
+esac
