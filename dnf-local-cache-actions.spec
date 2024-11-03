@@ -11,27 +11,36 @@ Group:       System Environment/Base
 BuildArch:   noarch
 Source0:     dnf-local-cache-actions
 Source1:     local.actions
-Source2:     README.md
-Source3:     LICENSE.txt
+Source2:     local.conf
+Source3:     local.repo
+Source4:     README.md
+Source5:     LICENSE.txt
 URL:         http://worldwidesullivan.com
 Vendor:      John Sullivan
 Packager:    jsullivan3@gmail.com
 BuildRequires: /usr/bin/install
 BuildRequires: /usr/bin/shellcheck
 Requires:    dnf5
+Requires:    createrepo_c
+Requires:    libdnf5-plugin-actions
+Obsoletes:   python3-dnf-plugin-local
 
 %description
 Automatically copy all downloaded packages to a repository on the
 local filesystem and generating repo metadata.
 
 %prep
-cp -v %{SOURCE0} %{SOURCE1} %{SOURCE2} %{SOURCE3} .
+cp -v %{SOURCE0} %{SOURCE1} %{SOURCE2} %{SOURCE3} %{SOURCE4} %{SOURCE5} .
 
 %build
 
 %install
 install -d ${RPM_BUILD_ROOT}/%{_sysconfdir}/dnf/libdnf5-plugins/actions.d
 install -m 0644 local.actions ${RPM_BUILD_ROOT}/%{_sysconfdir}/dnf/libdnf5-plugins/actions.d
+install -d ${RPM_BUILD_ROOT}/%{_sysconfdir}/dnf/plugins
+install -m 0644 local.conf ${RPM_BUILD_ROOT}/%{_sysconfdir}/dnf/plugins
+install -d ${RPM_BUILD_ROOT}/%{_sysconfdir}/yum.repos.d
+install -m 0644 local.repo ${RPM_BUILD_ROOT}/%{_sysconfdir}/yum.repos.d
 install -d ${RPM_BUILD_ROOT}/%{_sbindir}/
 install -m 0755 dnf-local-cache-actions ${RPM_BUILD_ROOT}/%{_sbindir}/
 
@@ -48,7 +57,9 @@ shellcheck ${RPM_BUILD_ROOT}/%{_sbindir}/dnf-local-cache-actions
 %files
 %doc README.md
 %license LICENSE.txt
+%config(noreplace) %{_sysconfdir}/dnf/plugins/local.conf
 %{_sysconfdir}/dnf/libdnf5-plugins/actions.d/local.actions
+%{_sysconfdir}/yum.repos.d/local.repo
 %{_sbindir}/dnf-local-cache-actions
 
 %changelog

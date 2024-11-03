@@ -1,0 +1,20 @@
+[_dnf-local]
+name=DNF Local Cache
+enabled=0
+cost=500
+skip_if_unavailable=1
+metadata_expire=1
+
+[_dnf-local-noarch]
+name=DNF Local Cache - noarch
+enabled=0
+cost=500
+skip_if_unavailable=1
+metadata_expire=1
+
+[_dnf-local-arch]
+name=DNF Local Cache - arch-specific
+enabled=0
+cost=500
+skip_if_unavailable=1
+metadata_expire=1

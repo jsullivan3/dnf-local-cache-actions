@@ -3,39 +3,184 @@
 # shellcheck source=/dev/null
 source /etc/os-release
 
-action="${1}"
-repository="${2}"
-arch="${3}"
-location="${4}"
+log_file=/var/log/dnf-local-cache-actions.log
+conf_file=/etc/dnf/plugins/local.conf
+# Do not enable unless explicitly instructed to enable.
+main_enabled="false"
+main_archdirs="false"
+main_repodir=""
+createrepo_enabled="false"
+
+exec 4>&1
+exec 5>&2
+exec 1>>"${log_file}" 2>>"${log_file}"
+
+set -eEuo pipefail
 
 log() {
-    echo "$@" >> /tmp/dnf-plugin-local.log
+    echo "$(date +"%b %T.%N %Z"): $*" >> "${log_file}"
 }
 
 log "Invoked with options: $*"
 
-local_dir=/mnt/yum-mirror/local/"${ID}"/"${VERSION_ID}"/"${arch}"
+temp="$(getopt -o h --long action:,arch:,help,location:,repository: -n dnf-local-cache-actions -- "$@")" || {
+    echo "Error processing options: $?"
+    exit 1
+}
 
-case "${action}" in
-    I|U|D|R)
-	    path_array=(/var/cache/libdnf5/"${repository}"-*/packages/"$(basename "${location}")")
-        if [[ ${#path_array[@]} -eq 0 ]] ; then
-            log "Error: $(basename "${location}") not found in DNF cache"
-        elif [[ ${#path_array[@]} -ne 1 ]] ; then
-            log "Error: $(basename "${location}") found in multiple paths: ${path_array[*]}"
-        else
-            path="${path_array[0]}"
-	        log "Searching for ${location} as ${path} due to ${action}"
-	        if ! mkdir -p "${local_dir}" ; then
-	            log "Error creating directory ${local_dir}"
-	        else
-	            if ! cp "${path}" "${local_dir}" ; then
-		            log "Copy failed."
+eval set -- "${temp}"
+
+usage="dnf-local-cache-actions [-h|--help] <command>"
+
+while [[ $# -ne 0 ]] ; do
+    case "${1}" in
+        -h|--help)
+            echo "${usage}"
+            exit 0
+            ;;
+        --action)
+            shift
+            action="${1}"
+            ;;
+        --arch)
+            shift
+            arch="${1}"
+            ;;
+        --location)
+            shift
+            location="${1}"
+            ;;
+        --repository)
+            shift
+            repository="${1}"
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Invalid option: ${1}"
+            echo "${usage}"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+process_conf() {
+    conf=$(awk -F= '/^[[:space:]]*(#.*)?$/{next};/^[[:space:]]*\[/{prefix=gensub(/\[([^\]]*)\]/, "\\1_", 1, $0);next};{gsub(/[ \t]+$/, "", $1);gsub(/[ \t]+/, "", $2);print prefix $1 "=" $2}' "${conf_file}") || {
+        log "Error $? processing configuration file ${conf_file}"
+        exit 1
+    }
+    eval "${conf}"
+}
+
+process_package() {
+    if [[ "${main_enabled}" != "true" ]] ; then
+        log "Not processing package ${location}, main_enabled=${main_enabled}"
+        return 0
+    fi
+
+    if [[ "${main_archdirs}" == "true" ]] ; then
+        cache_dir="${local_dir}"/"${arch}"
+    else
+        cache_dir="${local_dir}"
+    fi
+
+    case "${action}" in
+        I|U|D|R)
+            if [[ "${location}" = /* ]] ; then
+                # RPM file is local to the system, and therefore is not in
+                # the DNF cache.  Use the local path.
+                path="${location}"
+            else
+	            path_array=(/var/cache/libdnf5/"${repository}"-*/packages/"$(basename "${location}")")
+                if [[ ${#path_array[@]} -eq 0 ]] ; then
+                    log "Error: $(basename "${location}") not found in DNF cache"
+                elif [[ ${#path_array[@]} -ne 1 ]] ; then
+                    log "Error: $(basename "${location}") found in multiple paths: ${path_array[*]}"
+                else
+                    path="${path_array[0]}"
+                fi
+            fi
+            if [[ "${repository}" = _dnf-local* ]] ; then
+                log "Not archiving ${location} from repository ${repository}"
+            elif [[ -n "${path:-}" ]] ; then
+	            if ! mkdir -p "${cache_dir}" ; then
+	                log "Error creating directory ${cache_dir}"
 	            else
-		            log "Copy succeeded."
-		            touch /run/dnf-plugin-local."${arch}"
+	                if ! cp "${path}" "${cache_dir}" ; then
+		                log "Failed to cache ${path} due to ${action}, error: $?"
+	                else
+                        log "Cached ${path} due to ${action}"
+		                touch /run/dnf-plugin-local.refresh."${arch}"
+	                fi
 	            fi
-	        fi
+            fi
+	        ;;
+    esac
+}
+
+repo_config() {
+    log "Configuring local repository."
+    if [[ "${main_archdirs}" == "true" ]] ; then
+        local arch
+        arch="$(uname -m)"
+        echo "conf._dnf-local-noarch.enabled=1" >&4
+        echo "conf._dnf-local-noarch.baseurl=file://${local_dir}/noarch" >&4
+        echo "conf._dnf-local-noarch.name=\"DNF Local Cache - ${arch}\"" >&4
+        echo "conf._dnf-local-arch.enabled=1" >&4
+        echo "conf._dnf-local-arch.baseurl=file://${local_dir}/${arch}" >&4
+    else
+        echo "conf._dnf-local.enabled=1" >&4
+        echo "conf._dnf-local.baseurl=file://${local_dir}" >&4
+    fi
+    log "Local repositories configured."
+}
+
+update_repos() {
+    if [[ "${main_enabled,,}" != "true" ]] || [[ "${createrepo_enabled,,}" != "true" ]] ; then
+        log "Not running createrepo_c.  main_enabled=${main_enabled}, createrepo_enabled=${createrepo_enabled}"
+    else
+        if [[ -f /run/dnf-plugin-local.refresh.noarch ]] ; then
+            log "Updating noarch repository"
+            createrepo_c --update --unique-md-filenames "${local_dir}/noarch"
+            rm -fv /run/dnf-plugin-local.refresh.noarch
         fi
-	    ;;
+        local arch
+        arch="$(uname -m)"
+        if [[ -f /run/dnf-plugin-local.refresh."${arch}" ]] ; then
+            log "Updating ${arch} repository"
+            createrepo_c --update --unique-md-filenames "${local_dir}/${arch}"
+            rm -fv /run/dnf-plugin-local.refresh."${arch}"
+        fi
+    fi
+}
+
+if [[ -z "${1:-}" ]] ; then
+    log "Error: must specify command."
+    log "${usage}"
+    exit 1
+fi
+
+process_conf
+local_dir="${main_repodir}"
+if [[ -z "${local_dir}" ]] ; then
+    log "Error: local_dir has no value.  Please correctly set configuration."
+    exit 1
+fi
+
+case "${1}" in
+    "repo-config")
+        repo_config
+        ;;
+    "process")
+        process_package
+        ;;
+    "update-repos")
+        update_repos
+        ;;
+    *)
+        echo "Invalid command: ${1}"
+        ;;
 esac
