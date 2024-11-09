@@ -4,7 +4,7 @@
 
 Summary:     Local cache actions for libdnf5
 Name:        dnf-local-cache-actions
-Version:     0.1
+Version:     0.2
 Release:     1%{?dist}
 License:     GPLv2
 Group:       System Environment/Base
