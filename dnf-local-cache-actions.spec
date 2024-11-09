@@ -5,7 +5,7 @@
 Summary:     Local cache actions for libdnf5
 Name:        dnf-local-cache-actions
 Version:     0.2
-Release:     1%{?dist}
+Release:     2%{?dist}
 License:     GPLv2
 Group:       System Environment/Base
 BuildArch:   noarch
@@ -15,7 +15,7 @@ Source2:     local.conf
 Source3:     local.repo
 Source4:     README.md
 Source5:     LICENSE.txt
-URL:         http://worldwidesullivan.com
+URL:         https://github.com/jsullivan3/dnf-local-cache-actions
 Vendor:      John Sullivan
 Packager:    jsullivan3@gmail.com
 BuildRequires: /usr/bin/install
@@ -59,9 +59,13 @@ shellcheck ${RPM_BUILD_ROOT}/%{_sbindir}/dnf-local-cache-actions
 %license LICENSE.txt
 %config(noreplace) %{_sysconfdir}/dnf/plugins/local.conf
 %{_sysconfdir}/dnf/libdnf5-plugins/actions.d/local.actions
-%{_sysconfdir}/yum.repos.d/local.repo
+%attr(0644, -, -) %{_sysconfdir}/yum.repos.d/local.repo
 %{_sbindir}/dnf-local-cache-actions
 
 %changelog
+* Sat Nov 9 2024 John Sullivan <jsullivan3@gmail.com> [0.2-2]
+- Update project URL to point to GitHub repository
+- Fix repository configuration not readable by non-root user
+
 * Sun Nov 3 2024 John Sullivan <jsullivan3@gmail.com> [0.1-1]
 - Initial version
