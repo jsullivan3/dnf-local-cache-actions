@@ -64,6 +64,8 @@ shellcheck ${RPM_BUILD_ROOT}/%{_sbindir}/dnf-local-cache-actions
 
 %changelog
 * Sat Nov 9 2024 John Sullivan <jsullivan3@gmail.com> [0.2-2]
+- Correctly handle repository metadata update without architecture-specific directories
+- Correctly handle i686 repository in x86_64 environments
 - Update project URL to point to GitHub repository
 - Fix repository configuration not readable by non-root user
 

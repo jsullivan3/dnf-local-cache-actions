@@ -10,6 +10,7 @@ main_enabled="false"
 main_archdirs="false"
 main_repodir=""
 createrepo_enabled="false"
+refresh_file=/run/dnf-plugin-local.refresh
 
 exec 4>&1
 exec 5>&2
@@ -83,8 +84,10 @@ process_package() {
 
     if [[ "${main_archdirs}" == "true" ]] ; then
         cache_dir="${local_dir}"/"${arch}"
+        refresh_file=/run/dnf-plugin-local.refresh."${arch}"
     else
         cache_dir="${local_dir}"
+        refresh_file=/run/dnf-plugin-local.refresh
     fi
 
     case "${action}" in
@@ -113,7 +116,7 @@ process_package() {
 		                log "Failed to cache ${path} due to ${action}, error: $?"
 	                else
                         log "Cached ${path} due to ${action}"
-		                touch /run/dnf-plugin-local.refresh."${arch}"
+		                touch "${refresh_file}"
 	                fi
 	            fi
             fi
@@ -131,6 +134,11 @@ repo_config() {
         echo "conf._dnf-local-noarch.name=\"DNF Local Cache - ${arch}\"" >&4
         echo "conf._dnf-local-arch.enabled=1" >&4
         echo "conf._dnf-local-arch.baseurl=file://${local_dir}/${arch}" >&4
+        # Hack to make i686 work for x86_64.
+        if [[ "${arch}" == "x86_64" ]] ; then
+            echo "conf._dnf-local-subarch.enabled=1" >&4
+            echo "conf._dnf-local-subarch.baseurl=file://${local_dir}/i686" >&4
+        fi
     else
         echo "conf._dnf-local.enabled=1" >&4
         echo "conf._dnf-local.baseurl=file://${local_dir}" >&4
@@ -142,17 +150,17 @@ update_repos() {
     if [[ "${main_enabled,,}" != "true" ]] || [[ "${createrepo_enabled,,}" != "true" ]] ; then
         log "Not running createrepo_c.  main_enabled=${main_enabled}, createrepo_enabled=${createrepo_enabled}"
     else
-        if [[ -f /run/dnf-plugin-local.refresh.noarch ]] ; then
-            log "Updating noarch repository"
-            createrepo_c --update --unique-md-filenames "${local_dir}/noarch"
-            rm -fv /run/dnf-plugin-local.refresh.noarch
-        fi
-        local arch
-        arch="$(uname -m)"
-        if [[ -f /run/dnf-plugin-local.refresh."${arch}" ]] ; then
-            log "Updating ${arch} repository"
-            createrepo_c --update --unique-md-filenames "${local_dir}/${arch}"
-            rm -fv /run/dnf-plugin-local.refresh."${arch}"
+        if [[ "${main_archdirs}" == "true" ]] ; then
+            for file in /run/dnf-plugin-local.refresh.* ; do
+                refresh_arch="${file##*.}"
+                log "Updating ${refresh_arch} repository"
+                createrepo_c --update --unique-md-filenames "${local_dir}/${refresh_arch}"
+                rm -fv "${file}"
+            done
+        elif [[ -f /run/dnf-plugin-local.refresh ]] ; then
+            log "Updating local repository"
+            createrepo_c --update --unique-md-filenames "${local_dir}"
+            rm -fv "${refresh_file}"
         fi
     fi
 }

@@ -18,3 +18,10 @@ enabled=0
 cost=500
 skip_if_unavailable=1
 metadata_expire=1
+
+[_dnf-local-subarch]
+name=DNF Local Cache - subarch-specific
+enabled=0
+cost=500
+skip_if_unavailable=1
+metadata_expire=1
