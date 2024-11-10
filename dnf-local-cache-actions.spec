@@ -25,6 +25,7 @@ Requires:    createrepo_c
 Requires:    libdnf5-plugin-actions
 # util-linux-core provides logger
 Requires:    util-linux-core
+Obsoletes:   python3-dnf-plugin-local = 4.9.0-1
 
 %description
 Automatically copy all downloaded packages to a repository on the
@@ -65,6 +66,7 @@ shellcheck ${RPM_BUILD_ROOT}/%{_sbindir}/dnf-local-cache-actions
 
 %changelog
 * Sat Nov 9 2024 John Sullivan <jsullivan3@gmail.com> [0.2-2]
+- Obsolete the python3-dnf-plugin-local package to avoid conflicts with the config file
 - Use logger to log to system log and/or journal instead of directly to log file
 - Correctly handle repository metadata update without architecture-specific directories
 - Correctly handle i686 repository in x86_64 environments
