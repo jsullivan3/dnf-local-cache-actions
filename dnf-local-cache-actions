@@ -3,7 +3,6 @@
 # shellcheck source=/dev/null
 source /etc/os-release
 
-log_file=/var/log/dnf-local-cache-actions.log
 conf_file=/etc/dnf/plugins/local.conf
 # Do not enable unless explicitly instructed to enable.
 main_enabled="false"
@@ -14,18 +13,17 @@ refresh_file=/run/dnf-plugin-local.refresh
 
 exec 4>&1
 exec 5>&2
-exec 1>>"${log_file}" 2>>"${log_file}"
 
 set -eEuo pipefail
 
 log() {
-    echo "$(date +"%b %T.%N %Z"): $*" >> "${log_file}"
+    logger -t dnf-local-cache-actions "$*"
 }
 
 log "Invoked with options: $*"
 
 temp="$(getopt -o h --long action:,arch:,help,location:,repository: -n dnf-local-cache-actions -- "$@")" || {
-    echo "Error processing options: $?"
+    log "Error processing options: $?"
     exit 1
 }
 
@@ -36,7 +34,7 @@ usage="dnf-local-cache-actions [-h|--help] <command>"
 while [[ $# -ne 0 ]] ; do
     case "${1}" in
         -h|--help)
-            echo "${usage}"
+            log "${usage}"
             exit 0
             ;;
         --action)
@@ -60,8 +58,8 @@ while [[ $# -ne 0 ]] ; do
             break
             ;;
         *)
-            echo "Invalid option: ${1}"
-            echo "${usage}"
+            log "Invalid option: ${1}"
+            log "${usage}"
             exit 1
             ;;
     esac
@@ -84,10 +82,9 @@ process_package() {
 
     if [[ "${main_archdirs}" == "true" ]] ; then
         cache_dir="${local_dir}"/"${arch}"
-        refresh_file=/run/dnf-plugin-local.refresh."${arch}"
+        refresh_file="${refresh_file}.${arch}"
     else
         cache_dir="${local_dir}"
-        refresh_file=/run/dnf-plugin-local.refresh
     fi
 
     case "${action}" in
@@ -131,11 +128,12 @@ repo_config() {
         arch="$(uname -m)"
         echo "conf._dnf-local-noarch.enabled=1" >&4
         echo "conf._dnf-local-noarch.baseurl=file://${local_dir}/noarch" >&4
-        echo "conf._dnf-local-noarch.name=\"DNF Local Cache - ${arch}\"" >&4
+        echo "conf._dnf-local-arch.name=DNF Local Cache - ${arch}" >&4
         echo "conf._dnf-local-arch.enabled=1" >&4
         echo "conf._dnf-local-arch.baseurl=file://${local_dir}/${arch}" >&4
         # Hack to make i686 work for x86_64.
         if [[ "${arch}" == "x86_64" ]] ; then
+            echo "conf._dnf-local-subarch.name=DNF Local Cache - i686" >&4
             echo "conf._dnf-local-subarch.enabled=1" >&4
             echo "conf._dnf-local-subarch.baseurl=file://${local_dir}/i686" >&4
         fi
@@ -147,6 +145,7 @@ repo_config() {
 }
 
 update_repos() {
+    local output
     if [[ "${main_enabled,,}" != "true" ]] || [[ "${createrepo_enabled,,}" != "true" ]] ; then
         log "Not running createrepo_c.  main_enabled=${main_enabled}, createrepo_enabled=${createrepo_enabled}"
     else
@@ -154,13 +153,15 @@ update_repos() {
             for file in /run/dnf-plugin-local.refresh.* ; do
                 refresh_arch="${file##*.}"
                 log "Updating ${refresh_arch} repository"
-                createrepo_c --update --unique-md-filenames "${local_dir}/${refresh_arch}"
-                rm -fv "${file}"
+                output="$(createrepo_c --update --unique-md-filenames "${local_dir}/${refresh_arch}")"
+                log "${output}"
+                rm -f "${file}"
             done
         elif [[ -f /run/dnf-plugin-local.refresh ]] ; then
             log "Updating local repository"
-            createrepo_c --update --unique-md-filenames "${local_dir}"
-            rm -fv "${refresh_file}"
+            output="$(createrepo_c --update --unique-md-filenames "${local_dir}")"
+            log "${output}"
+            rm -f "${refresh_file}"
         fi
     fi
 }
@@ -189,6 +190,6 @@ case "${1}" in
         update_repos
         ;;
     *)
-        echo "Invalid command: ${1}"
+        log "Invalid command: ${1}"
         ;;
 esac

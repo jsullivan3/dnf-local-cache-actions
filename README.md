@@ -11,6 +11,15 @@ loaded so it can present the local cache as a new repository, once for
 each package to be copied into the cache, and then once at the end of
 the transaction to rebuild the repository metadata.
 
+## Logging ##
+
+Messages are logged through `logger` and are available in the system
+log.  Use the following commang to access them through the journal:
+
+```
+journalctl -t dnf-local-cache-actions
+```
+
 ## Building ##
 
 Use `mock`.  For example, to build this package for Fedora 41 x86_64:
