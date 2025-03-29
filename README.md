@@ -28,8 +28,12 @@ Use `mock`.  For example, to build this package for Fedora 41 x86_64:
 mock -r fedora-41-x86_64 --buildsrpm --spec dnf-local-cache-actions.spec \
     --sources . --resultdir=f41-src && \
     mock -r fedora-41-x86_64 --rebuild --resultdir=f41 \
-    f41-src/dnf-local-cache-actions-0.1-1.fc41.src.rpm
+    f41-src/dnf-local-cache-actions-0.2-2.fc41.src.rpm
 ```
+
+## Installation ##
+
+`copr` packages are [available here](https://copr.fedorainfracloud.org/coprs/flatline/dnf-local-cache-actions/).
 
 ## License ##
 
