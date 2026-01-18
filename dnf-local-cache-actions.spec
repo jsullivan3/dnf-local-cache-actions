@@ -4,7 +4,7 @@
 
 Summary:     Local cache actions for libdnf5
 Name:        dnf-local-cache-actions
-Version:     0.2
+Version:     0.3
 Release:     2%{?dist}
 License:     GPLv2
 Group:       System Environment/Base
@@ -43,11 +43,11 @@ install -d ${RPM_BUILD_ROOT}/%{_sysconfdir}/dnf/plugins
 install -m 0644 local.conf ${RPM_BUILD_ROOT}/%{_sysconfdir}/dnf/plugins
 install -d ${RPM_BUILD_ROOT}/%{_sysconfdir}/yum.repos.d
 install -m 0644 local.repo ${RPM_BUILD_ROOT}/%{_sysconfdir}/yum.repos.d
-install -d ${RPM_BUILD_ROOT}/%{_sbindir}/
-install -m 0755 dnf-local-cache-actions ${RPM_BUILD_ROOT}/%{_sbindir}/
+install -d ${RPM_BUILD_ROOT}/%{_bindir}/
+install -m 0755 dnf-local-cache-actions ${RPM_BUILD_ROOT}/%{_bindir}/
 
 %check
-shellcheck ${RPM_BUILD_ROOT}/%{_sbindir}/dnf-local-cache-actions
+shellcheck ${RPM_BUILD_ROOT}/%{_bindir}/dnf-local-cache-actions
 
 %post
 # Insert configuration migration from python3-dnf-plugin-local here.
@@ -62,9 +62,12 @@ shellcheck ${RPM_BUILD_ROOT}/%{_sbindir}/dnf-local-cache-actions
 %config(noreplace) %{_sysconfdir}/dnf/plugins/local.conf
 %{_sysconfdir}/dnf/libdnf5-plugins/actions.d/local.actions
 %attr(0644, -, -) %{_sysconfdir}/yum.repos.d/local.repo
-%{_sbindir}/dnf-local-cache-actions
+%{_bindir}/dnf-local-cache-actions
 
 %changelog
+* Sun Jan 18 2026 John Sullivan <jsullivan3@gmail.com> [0.3-2]
+- Install to and reference script from /usr/bin, not /usr/sbin
+
 * Sat Nov 9 2024 John Sullivan <jsullivan3@gmail.com> [0.2-2]
 - Obsolete the python3-dnf-plugin-local package to avoid conflicts with the config file
 - Use logger to log to system log and/or journal instead of directly to log file

@@ -1,10 +1,10 @@
 # Get repository configuration data.
-repos_configured::::/usr/sbin/dnf-local-cache-actions repo-config
+repos_configured::::/usr/bin/dnf-local-cache-actions repo-config
 
 # Remove the createrepo flag files.
 pre_transaction::::/usr/bin/rm -f /run/dnf-plugin-local.* /tmp/createrepo.log
 
 # Duplicate the local plugin
-post_transaction:*:in::/usr/sbin/dnf-local-cache-actions process --action ${pkg.action} --repository ${pkg.repo_id} --arch ${pkg.arch} --location ${pkg.location}
-post_transaction::::/usr/sbin/dnf-local-cache-actions update-repos
+post_transaction:*:in::/usr/bin/dnf-local-cache-actions process --action ${pkg.action} --repository ${pkg.repo_id} --arch ${pkg.arch} --location ${pkg.location}
+post_transaction::::/usr/bin/dnf-local-cache-actions update-repos
 
