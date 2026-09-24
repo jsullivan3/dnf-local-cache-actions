@@ -5,7 +5,7 @@
 Summary:     Local cache actions for libdnf5
 Name:        dnf-local-cache-actions
 Version:     0.3
-Release:     2%{?dist}
+Release:     3%{?dist}
 License:     GPLv2
 Group:       System Environment/Base
 BuildArch:   noarch
@@ -65,6 +65,9 @@ shellcheck ${RPM_BUILD_ROOT}/%{_bindir}/dnf-local-cache-actions
 %{_bindir}/dnf-local-cache-actions
 
 %changelog
+* Thu Sep 24 2026 John Sullivan <jsullivan3@gmail.com> [0.3-3]
+- Rebuild for Fedora 45
+
 * Sun Jan 18 2026 John Sullivan <jsullivan3@gmail.com> [0.3-2]
 - Install to and reference script from /usr/bin, not /usr/sbin
 
